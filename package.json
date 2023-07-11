@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "aws-sdk": "^2.1414.0",
+    "dotenv": "^16.3.1",
+    "fs": "^0.0.1-security",
+    "nodemailer": "^6.9.3",
+    "path": "^0.12.7",
+    "xlsx": "^0.18.5",
+    "xlsx-populate": "^1.21.0",
+    "xlsx-style": "^0.8.13"
+  }
+}
