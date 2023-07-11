@@ -17,7 +17,7 @@ const startTime = new Date()
 console.log("Begin...");
 
 // Chemin vers votre fichier Excel
-const filePath = 'export_ca 1072023 V4.xlsx';
+const filePath = 'export.xlsx';
 
 // Charger le fichier Excel
 const workbook = xlsx.readFile(filePath);
@@ -650,6 +650,11 @@ fs.readdir(filePath2, (err, files) => {
             filename: files[0],
             content: fs.readFileSync(filePath2 + files[0])
         }]
-        
+    }).then(() => {
+        // Supprimez le fichier Excel une fois que l'e-mail est envoyé
+        fs.unlinkSync(filePath2 + files[0]);
+    }).catch(error => {
+        console.log(error);
     });
-});
+})
+
