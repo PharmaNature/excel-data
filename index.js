@@ -29,21 +29,32 @@ const worksheet = workbook.Sheets[workbook.SheetNames[2]];
 
     let data = []
     for (let i = 0; i < dataBrut.length; i++) {
-        data[i] = {};
         let date = dataBrut[i]['Lignes de facture/Créé le']
+        let produit =  dataBrut[i]['Lignes de facture/Article']
+        let quantite = dataBrut[i]['Quantité']
+        let equipe = dataBrut[i]['Équipe']
+        let client = dataBrut[i]['ID client']
+        let prix = dataBrut[i]['Sous-total signé']
+        let departement= dataBrut[i]['Code postal']
+        if (departement) {
+            
+        data[i] = {};
         data[i]['Date'] = (new Date((date - 25569) * 86400 * 1000)).toISOString()
-        data[i]['Produit'] = dataBrut[i]['Lignes de facture/Article']
-        data[i]['Quantite'] = dataBrut[i]['Quantité']
-        data[i]['Equipe'] = dataBrut[i]['Équipe']
-        data[i]['Client'] = dataBrut[i]['ID client']
-        data[i]['Prix'] = dataBrut[i]['Sous-total signé']
-        let departement = dataBrut[i]['Code postal'].toString()
-        if (!departement.includes('A')) {
-            if (departement.length == 4) {
+        data[i]['Produit'] = produit
+        data[i]['Quantite'] = quantite
+        data[i]['Equipe'] = equipe
+        data[i]['Client'] = client
+        data[i]['Prix'] = prix
+        departement = departement.toString()
+        if (departement.includes('AD')) {
+            departement = '99'
+        }
+        else if (departement.length == 4) {
                 departement = '0'+ departement
             }
-            data[i]['Dpt'] = departement.toString().substring(0,2)
+        data[i]['Dpt'] = departement.substring(0,2)
         }
+        
     }
     return data;
 }
@@ -979,26 +990,56 @@ function createDataDN() {
     const keyDpt = Object.keys(equipeParDepartement)
 
     for (let k = 0; k < keyDpt.length; k++) {
+        let sumEquipe = {}
+        let rowSum = []
         for (let t = 0; t < equipeParDepartement[keyDpt[k]].length; t++) {
+            // somme 
+            if (t == 0) {
+                
+            
+            for (let h = 0; h < years.length; h++) {
+                sumEquipe["Equipe"] = keyDpt[k]
+                sumEquipe[years[h]] = {}
+                sumEquipe[years[h]]['NbActif'] = 0
+                sumEquipe[years[h]]['NbPotentiel'] = 0
+                sumEquipe[years[h]]['CA'] = 0
+            }
+        }
+
             let rowDpt = []
             rowDpt.push('')
             for (let i = 0; i < years.length; i++) {
+                
                 let year = years[i]
                 const key = equipeParDepartement[keyDpt[k]][t]
                 
                 let ratioDpt = ''
                 if (potentiel[key] && potentiel[key] != 0) {
-                    ratioDpt = (allCustomersDpt[year][key] / potentiel[key] * 100).toFixed(1) + '%'
+                    ratioDpt = (allCustomersDpt[year][key] / potentiel[key] * 100).toFixed(1)
                 }
                 // CA départements 
                 let caD = 0
                 if (CADpts[year][key]) {
                     caD = CADpts[year][key]
                 }
-                rowDpt.push(keyDpt[k], key, allCustomersDpt[year][key], potentiel[key], ratioDpt, caD + "€", "")
+                let nbActif = allCustomersDpt[year][key]
+                let NbPotentiel = potentiel[key]
+                sumEquipe[years[i]]['NbActif'] += nbActif
+                sumEquipe[years[i]]['NbPotentiel'] += potentiel[key]
+                
+                sumEquipe[years[i]]['CA'] += caD
+                rowDpt.push(keyDpt[k], key, nbActif, NbPotentiel, ratioDpt + "%", caD + "€", "")
             }
             excelRowsDptequipe.push(rowDpt)
         }
+        for (let g = 0; g < years.length; g++) {
+            let pourcent = (sumEquipe[years[g]]['NbActif']/sumEquipe[years[g]]['NbPotentiel']*100).toFixed(1)
+            rowSum.push("", sumEquipe["Equipe"], "", sumEquipe[years[g]]['NbActif'], sumEquipe[years[g]]['NbPotentiel'],  pourcent+"%", sumEquipe[years[g]]['CA'] + "€")
+        }
+        excelRowsDptequipe.push(rowSum)
+        excelRowsDptequipe.push([""])
+
+
     }
 
 
@@ -1171,7 +1212,7 @@ for (let i = 0; i < years.length; i++) {
 
 
 // TEST
-//console.log(equipeParDepartement); 
+
 colorEquipeVsNational(generateOutput2(createDataDN()))
 
 // fin du temps 
