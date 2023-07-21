@@ -17,46 +17,46 @@ console.log("Begin...");
 function getData() {
     
     // Chemin vers votre fichier Excel
-const filePath = 'export.xlsx';
+const filePath = 'export_test_1.xlsx';
 
 // Charger le fichier Excel
 const workbook = xlsx.readFile(filePath);
 
 // Obtenir le nom de la première feuille de calcul
-const worksheet = workbook.Sheets[workbook.SheetNames[2]];
+const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     console.log("Sheet to JSON");
     const dataBrut = xlsx.utils.sheet_to_json(worksheet);
-
     let data = []
+    const equipeBAN = ['VNC','INTER','COFFRES','FACONNAGE','MDD','PARTICULIERS','PERSONNEL', 'CD03']
+
     for (let i = 0; i < dataBrut.length; i++) {
         let date = dataBrut[i]['Lignes de facture/Créé le']
         let produit =  dataBrut[i]['Lignes de facture/Article']
-        let quantite = dataBrut[i]['Quantité']
-        let equipe = dataBrut[i]['Équipe']
-        let client = dataBrut[i]['ID client']
-        let prix = dataBrut[i]['Sous-total signé']
-        let departement= dataBrut[i]['Code postal']
-        if (departement) {
-            
-        data[i] = {};
-        data[i]['Date'] = (new Date((date - 25569) * 86400 * 1000)).toISOString()
-        data[i]['Produit'] = produit
-        data[i]['Quantite'] = quantite
-        data[i]['Equipe'] = equipe
-        data[i]['Client'] = client
-        data[i]['Prix'] = prix
-        departement = departement.toString()
-        if (departement.includes('AD')) {
-            departement = '99'
-        }
-        else if (departement.length == 4) {
+        let quantite = dataBrut[i]['Lignes de facture/Quantité']
+        let equipe = dataBrut[i]['Lignes de facture/Partenaire/Équipe commerciale']
+        let client = dataBrut[i]['Lignes de facture/Partenaire/Référence']
+        let prix = dataBrut[i]['Lignes de facture/Sous-total signé']
+        let departement= dataBrut[i]['Lignes de facture/Partenaire/Code postal']
+        if (typeof departement !== 'undefined' && typeof equipe !== 'undefined' && !equipeBAN.includes(equipe)) {
+            data[i] = {};
+            data[i]['Date'] = (new Date((date - 25569) * 86400 * 1000)).toISOString()
+            data[i]['Produit'] = produit
+            data[i]['Quantite'] = quantite
+            data[i]['Equipe'] = equipe
+            data[i]['Client'] = client
+            data[i]['Prix'] = prix
+            departement = departement.toString()
+            if (departement.includes('AD')) {
+                departement = '99'
+            }
+            else if (departement.length == 4) {
                 departement = '0'+ departement
             }
-        data[i]['Dpt'] = departement.substring(0,2)
+            data[i]['Dpt'] = departement.substring(0,2)
         }
         
     }
-    return data;
+    return data
 }
 
 function getDataEquipeDpt() {
@@ -126,7 +126,6 @@ function getTimeProcess(startTime, endTime) {
 function getYears() {
     const tab = [];
     const colonne = 'Date';
-
     for (let i = 0; i < data.length; i++) {
         const valeur = data[i][colonne];
         // Convertir la date en format YYYY-MM-DD en un tableau de chaînes de caractères
@@ -136,6 +135,7 @@ function getYears() {
         if (!tab.includes(annee)) {
             tab.push(annee);
         }
+
     }
     tab.sort()
     return tab;
@@ -144,13 +144,15 @@ function getYears() {
 function getTeams() {
     const tab = [];
     const colonne = 'Equipe';
-
+    const equipeBAN = ['VNC','INTER','COFFRES','FACONNAGE','MDD','PARTICULIERS','PERSONNEL']
     for (let i = 0; i < data.length; i++) {
-        const valeur = data[i][colonne];
+        if (data[i]) {
+            const valeur = data[i][colonne];
 
-        // Vérifier si la valeur n'est pas déjà présente dans le tableau
-        if (!tab.includes(valeur) && valeur !== 'VNC' && valeur !== 'INTER') {
-            tab.push(valeur);
+            // Vérifier si la valeur n'est pas déjà présente dans le tableau
+            if (!tab.includes(valeur) && !equipeBAN.includes(valeur)) {
+                tab.push(valeur);
+            }
         }
     }
 
@@ -162,11 +164,13 @@ function getDpts() {
     const colonne = 'Dpt';
 
     for (let i = 0; i < data.length; i++) {
-        const valeur = data[i][colonne];
+        if (data[i]) {
+            const valeur = data[i][colonne];
 
-        // Vérifier si la valeur n'est pas déjà présente dans le tableau
-        if (!tab.includes(valeur) && valeur) {
-            tab.push(valeur);
+            // Vérifier si la valeur n'est pas déjà présente dans le tableau
+            if (!tab.includes(valeur) && valeur) {
+                tab.push(valeur);
+            }
         }
     }
 
@@ -205,14 +209,14 @@ function getProducts() {
     const colonne = 'Produit';
 
     for (let i = 0; i < data.length; i++) {
-        const valeur = data[i][colonne];
-
-        // Vérifier si la valeur n'est pas déjà présente dans le tableau
-        if (!tab.includes(valeur)) {
-            tab.push(valeur);
+        if (data[i]) {
+            const valeur = data[i][colonne];
+            // Vérifier si la valeur n'est pas déjà présente dans le tableau
+            if (!tab.includes(valeur)) {
+                tab.push(valeur);
+            }
         }
     }
-
     return tab;
 }
 
@@ -292,8 +296,6 @@ function getPricePerDtp() {
             if (annee === years[k]){
             // ajoute la quantité pour la bonne année
             microDic[dpt] += parseInt(prix)
-            
-                
             }
             
         }
@@ -769,6 +771,7 @@ function createDataDN() {
     ////////////////////////////////////////////////
     // Pour chaque équipe 
     for (let i = 0; i < teams.length; i++) {
+    
         let excelRows = []
         // Ajouter une ligne vide pour séparer les blocs
         //excelRows.push([]);
@@ -820,6 +823,7 @@ function createDataDN() {
     // Pour chaque année, afficher les produits du top All en colonnes
 
     let stats = nationalStat()
+    //console.log(topAll);
     for (let j = 0; j < topAll[0].length; j++) {
 
         let row = [];
@@ -1178,16 +1182,34 @@ async function colorEquipeVsNational(filePath) {
  * CONSTANTES
  */
 let count = 0
-const data = getData()
-console.log("Processing...");
+const dataProut = getData()
+
+const data = []
+for (let i = 0; i < dataProut.length; i++) {
+    if (typeof dataProut[i] != 'undefined') {
+        data.push(dataProut[i])
+    }
+    
+}
+//console.log("Processing...");
+
 const years = getYears().sort()
+//console.log(years.length);
+
 const teams = getTeams().sort()
-const products = getProducts().sort()
+//console.log(teams.length);
+
+//const products = getProducts().sort()
+
 const dpts = getDpts().sort()
+//console.log(dpts.length);
+
+
 //const top25 = getTop25PerYears()
 const topAll = getTopPerYears()
 const allCustomers = getAllCustomers()
 const allCustomersProduct = getAllCustomersProduct()
+//console.log(allCustomersProduct);
 //const top25Price = getTop25PricePerYears()
 const topAllPrice = getTopAllPricePerYears()
 
@@ -1197,6 +1219,7 @@ const potentiel = getPotentielDpts()
 const allCustomersDpt = getAllCustomersDpt()
 //const CADpts = getCADpts() // je pense pas nécessaire parce que je me suis trompé de fichier mais dans le doute...
 const CADpts = getPricePerDtp()
+console.log(CADpts);
 const equipeParDepartement = getEquipeDpt()
 
 
@@ -1212,8 +1235,30 @@ for (let i = 0; i < years.length; i++) {
 
 
 // TEST
+// pas normal que se soit à 0 mais normal parce que dans le fichier il y a 0 
+//console.log(getCustomers('CD13 (75,92,93,94,95)','2021'))
+//console.log(CADpts);
 
-colorEquipeVsNational(generateOutput2(createDataDN()))
+let sku = createDataDN()
+// pour enlever tous les undefined qui me font un peu chier. UwU
+for (let k = 0; k < sku.length; k++) {
+    for (let q = 0; q < sku[k].length; q++) {
+        for (let r = 0; r < sku[k][q].length; r++) {
+            //console.log(sku[k][q][r]);
+                if (typeof sku[k][q][r] === 'undefined') {
+                    sku[k][q][r] = ''
+                }
+                if (typeof sku[k][q] === 'undefined') {
+                    sku[k][q] = ''
+                }
+                if (typeof sku[k] === 'undefined') {
+                    sku[k] = ''
+                }
+        }
+    }
+}
+
+colorEquipeVsNational(generateOutput2(sku))
 
 // fin du temps 
 getTimeProcess(startTime, new Date())
