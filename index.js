@@ -15,34 +15,35 @@ console.log("Begin...");
  */
 
 function getData() {
-    
+
     // Chemin vers votre fichier Excel
-const filePath = 'export_test_1.xlsx';
+    const filePath = 'export.xlsx';
 
-// Charger le fichier Excel
-const workbook = xlsx.readFile(filePath);
+    // Charger le fichier Excel
+    const workbook = xlsx.readFile(filePath);
 
-// Obtenir le nom de la première feuille de calcul
-const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    // Obtenir le nom de la première feuille de calcul
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     console.log("Sheet to JSON");
     const dataBrut = xlsx.utils.sheet_to_json(worksheet);
     let data = []
-    const equipeBAN = ['VNC','INTER','COFFRES','FACONNAGE','MDD','PARTICULIERS','PERSONNEL', 'CD03']
+    const equipeBAN = ['VNC', 'INTER', 'COFFRES', 'FACONNAGE', 'MDD', 'PARTICULIERS', 'PERSONNEL', 'CD03', 'EXPORT']
 
     for (let i = 0; i < dataBrut.length; i++) {
         let date = dataBrut[i]['Lignes de facture/Créé le']
-        let produit =  dataBrut[i]['Lignes de facture/Article']
+        let produit = dataBrut[i]['Lignes de facture/Article']
         let quantite = dataBrut[i]['Lignes de facture/Quantité']
         let equipe = dataBrut[i]['Lignes de facture/Partenaire/Équipe commerciale']
         let client = dataBrut[i]['Lignes de facture/Partenaire/Référence']
         let prix = dataBrut[i]['Lignes de facture/Sous-total signé']
-        let departement= dataBrut[i]['Lignes de facture/Partenaire/Code postal']
+        let departement = dataBrut[i]['Lignes de facture/Partenaire/Code postal']
         if (typeof departement !== 'undefined' && typeof equipe !== 'undefined' && !equipeBAN.includes(equipe)) {
             data[i] = {};
             data[i]['Date'] = (new Date((date - 25569) * 86400 * 1000)).toISOString()
             data[i]['Produit'] = produit
             data[i]['Quantite'] = quantite
             data[i]['Equipe'] = equipe
+            client = traitementIdClient(client)
             data[i]['Client'] = client
             data[i]['Prix'] = prix
             departement = departement.toString()
@@ -50,13 +51,17 @@ const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 departement = '99'
             }
             else if (departement.length == 4) {
-                departement = '0'+ departement
+                departement = '0' + departement
             }
-            data[i]['Dpt'] = departement.substring(0,2)
+            data[i]['Dpt'] = departement.substring(0, 2)
         }
-        
+
     }
     return data
+}
+
+function traitementIdClient(idClient) {
+    return idClient.replace(/^0+/, '');
 }
 
 function getDataEquipeDpt() {
@@ -95,15 +100,22 @@ function getEquipeDpt() {
         const secteur = dataDPT[i]['Secteur'];
         let dpt = dataDPT[i]['DPT'];
 
+
         if (secteur && dpt) {
             dpt = dpt.toString()
-            if (dpt.length == 1) {
-                dpt = "0"+dpt 
+            let aPrendre = !dpt.includes('!') // pour ne pas prendre par exemple les 4 pharmacies du 31 dans CD08
+
+            if (aPrendre) {
+
+
+                if (dpt.length == 1) {
+                    dpt = "0" + dpt
+                }
+                if (!dic[secteur]) {
+                    dic[secteur] = [];
+                }
+                dic[secteur].push(dpt);
             }
-            if (!dic[secteur]) {
-                dic[secteur] = [];
-            }
-            dic[secteur].push(dpt);
         }
     }
 
@@ -144,7 +156,7 @@ function getYears() {
 function getTeams() {
     const tab = [];
     const colonne = 'Equipe';
-    const equipeBAN = ['VNC','INTER','COFFRES','FACONNAGE','MDD','PARTICULIERS','PERSONNEL']
+    const equipeBAN = ['VNC', 'INTER', 'COFFRES', 'FACONNAGE', 'MDD', 'PARTICULIERS', 'PERSONNEL']
     for (let i = 0; i < data.length; i++) {
         if (data[i]) {
             const valeur = data[i][colonne];
@@ -177,28 +189,28 @@ function getDpts() {
     return tab;
 }
 
-function getPotentielDpts(){
+function getPotentielDpts() {
     const dic = {}
 
     for (let i = 0; i < dataDPT.length; i++) {
-        if(dataDPT[i]['DPT'] && dataDPT[i]['Potentiel']){
+        if (dataDPT[i]['DPT'] && dataDPT[i]['Potentiel']) {
             let departement = dataDPT[i]['DPT']
             if (departement.toString().length === 1) {
-                departement = '0'+ departement
+                departement = '0' + departement
             }
-            dic[departement] = dataDPT[i]['Potentiel']   
+            dic[departement] = dataDPT[i]['Potentiel']
         }
     }
 
     return dic
 }
 
-function getCADpts(){
+function getCADpts() {
     const dic = {}
-    for (let i = 0;i < dataDPT.length;i++){
-        if(dataDPT[i]['DPT'] && dataDPT[i]['CA']){
+    for (let i = 0; i < dataDPT.length; i++) {
+        if (dataDPT[i]['DPT'] && dataDPT[i]['CA']) {
             let departement = dataDPT[i]['DPT']
-            dic[departement] = dataDPT[i]['CA']   
+            dic[departement] = dataDPT[i]['CA']
         }
     }
     return dic
@@ -225,25 +237,25 @@ function getQtyPerYears() {
     let gigaDic = {}
 
     for (let k = 0; k < years.length; k++) {
-    let microDic = {}
-        
+        let microDic = {}
+
         for (let i = 0; i < data.length; i++) {
             let obj = data[i]
             let annee = obj['Date'].substring(0, 4)
             let produit = obj['Produit']
             let quantite = obj['Quantite']
 
-            
+
             // si il n'y a pas l'année pour ce produit 
             if (!microDic[produit] && annee === years[k]) {
                 microDic[produit] = 0
             }
-            if (annee === years[k]){
-            // ajoute la quantité pour la bonne année
-            microDic[produit] += quantite
-                
+            if (annee === years[k]) {
+                // ajoute la quantité pour la bonne année
+                microDic[produit] += quantite
+
             }
-            
+
         }
         gigaDic[years[k]] = microDic
     }
@@ -253,55 +265,55 @@ function getQtyPerYears() {
 function getTop25PerYears() {
     let dic = getQtyPerYears()
     let dick = []
-    for(let i = 0;i < years.length;i++){
+    for (let i = 0; i < years.length; i++) {
         const products = dic[years[i]];
         const sortedProducts = Object.keys(products).sort((a, b) => products[b] - products[a]);
         dick[i] = sortedProducts.slice(0, 25);
     }
-    return dick 
+    return dick
 }
 function getTopPerYears() {
     let dic = getQtyPerYears()
     let dick = []
-    for(let i = 0;i < years.length;i++){
+    for (let i = 0; i < years.length; i++) {
         const products = dic[years[i]];
         const sortedProducts = Object.keys(products).sort((a, b) => products[b] - products[a]);
         dick[i] = sortedProducts
     }
-    return dick 
+    return dick
 }
 
 function getPricePerDtp() {
     let gigaDic = {}
 
     for (let k = 0; k < years.length; k++) {
-    let microDic = {}
-        
+        let microDic = {}
+
         for (let i = 0; i < data.length; i++) {
             let obj = data[i]
             let annee = obj['Date'].substring(0, 4)
             let prix = obj['Prix']
             let dpt = obj['Dpt']
-            
+
             if (!isNaN(parseFloat(prix))) {
                 prix = parseFloat(prix);
             } else {
                 prix = 0;
             }
-            
+
             // si il n'y a pas l'année pour ce produit 
             if (!microDic[dpt] && annee === years[k]) {
                 microDic[dpt] = 0
             }
-            if (annee === years[k]){
-            // ajoute la quantité pour la bonne année
-            microDic[dpt] += parseInt(prix)
+            if (annee === years[k]) {
+                // ajoute la quantité pour la bonne année
+                microDic[dpt] += parseInt(prix)
             }
-            
+
         }
         gigaDic[years[k]] = microDic
     }
-    
+
     return gigaDic
 }
 
@@ -309,37 +321,37 @@ function getPricePerYears() {
     let gigaDic = {}
 
     for (let k = 0; k < years.length; k++) {
-    let microDic = {}
-        
+        let microDic = {}
+
         for (let i = 0; i < data.length; i++) {
             let obj = data[i]
             let annee = obj['Date'].substring(0, 4)
             let produit = obj['Produit']
             let prix = obj['Prix']
-            
+
             if (!isNaN(parseFloat(prix))) {
                 prix = parseFloat(prix);
             } else {
                 prix = 0;
             }
-            
+
             // si il n'y a pas l'année pour ce produit 
             if (!microDic[produit] && annee === years[k]) {
                 microDic[produit] = 0
             }
-            if (annee === years[k]){
-            // ajoute la quantité pour la bonne année
-            microDic[produit] += prix
-                
+            if (annee === years[k]) {
+                // ajoute la quantité pour la bonne année
+                microDic[produit] += prix
+
             }
-            
+
         }
         gigaDic[years[k]] = microDic
     }
     return gigaDic
 }
 
-function getTop25PricePerYears(){
+function getTop25PricePerYears() {
     let listePrix = getPricePerYears()
     let dic = {}
     for (let i = 0; i < years.length; i++) {
@@ -351,7 +363,7 @@ function getTop25PricePerYears(){
     return dic
 
 }
-function getTopAllPricePerYears(){
+function getTopAllPricePerYears() {
     let listePrix = getPricePerYears()
     let dic = {}
     for (let i = 0; i < years.length; i++) {
@@ -364,11 +376,11 @@ function getTopAllPricePerYears(){
 
 }
 
-function getCustomers(team,year){
+function getCustomers(team, year) {
     let listeClient = []
 
     for (let i = 0; i < data.length; i++) {
-        if (data[i]['Equipe'] === team && data[i]['Date'].substring(0,4) === year && !listeClient.includes(data[i]['Client'])) {
+        if (data[i]['Equipe'] === team && data[i]['Date'].substring(0, 4) === year && !listeClient.includes(data[i]['Client'])) {
             listeClient.push(data[i]['Client'])
         }
     }
@@ -403,7 +415,7 @@ function getAllCustomersMore(year) {
     return listeClient
 }
 
-function getAllLostCustomers(){
+function getAllLostCustomers() {
     let dic = {}
     let dicLost = {}
     // pour chaque année tous les clients 
@@ -413,11 +425,11 @@ function getAllLostCustomers(){
     }
 
     // pour chaque année tous les clients qui ne sont plus là
-    for (let i = 0; i < years.length-1; i++) {
+    for (let i = 0; i < years.length - 1; i++) {
         for (let j = 0; j < dic[years[i]].length; j++) {
             // vérifie pour tous les clients si ils sont dans l'année d'après
-            if (!dic[years[i+1]].includes(dic[years[i]][j])) {
-                dicLost[years[i+1]].push(dic[years[i]][j])
+            if (!dic[years[i + 1]].includes(dic[years[i]][j])) {
+                dicLost[years[i + 1]].push(dic[years[i]][j])
             }
         }
     }
@@ -459,7 +471,7 @@ function statsByTeamForNewAndLostCustomers() {
     for (let p = 1; p < years.length; p++) {
         dicStats[years[p]] = {}
         for (let t = 0; t < teams.length; t++) {
-            dicStats[years[p]][teams[t]] = { lost:0, new:0, ratioLost:'', ratioNew:'', 'ratioLost%':'', 'ratioNew%':''}
+            dicStats[years[p]][teams[t]] = { lost: 0, new: 0, ratioLost: '', ratioNew: '', 'ratioLost%': '', 'ratioNew%': '' }
         }
     }
 
@@ -496,8 +508,8 @@ function statsByTeamForNewAndLostCustomers() {
         for (let t = 0; t < teams.length; t++) {
             dicStats[years[p]][teams[t]]['ratioNew'] = dicStats[years[p]][teams[t]]['new'] + "/" + dicNew[years[p]].length
             dicStats[years[p]][teams[t]]['ratioLost'] = dicStats[years[p]][teams[t]]['lost'] + "/" + dicLost[years[p]].length
-            dicStats[years[p]][teams[t]]['ratioNew%'] = ((dicStats[years[p]][teams[t]]['new']/dicNew[years[p]].length)*100).toFixed(1)+'%'
-            dicStats[years[p]][teams[t]]['ratioLost%'] = ((dicStats[years[p]][teams[t]]['lost']/dicLost[years[p]].length)*100).toFixed(1) +'%'
+            dicStats[years[p]][teams[t]]['ratioNew%'] = ((dicStats[years[p]][teams[t]]['new'] / dicNew[years[p]].length) * 100).toFixed(1) + '%'
+            dicStats[years[p]][teams[t]]['ratioLost%'] = ((dicStats[years[p]][teams[t]]['lost'] / dicLost[years[p]].length) * 100).toFixed(1) + '%'
         }
     }
 
@@ -505,7 +517,7 @@ function statsByTeamForNewAndLostCustomers() {
     return dicStats
 }
 
-function getAllCustomers(){
+function getAllCustomers() {
     let dic = {}
 
     for (let i = 0; i < years.length; i++) {
@@ -514,17 +526,17 @@ function getAllCustomers(){
         dic[year] = {}
         for (let k = 0; k < teams.length; k++) {
             let team = teams[k]
-            let nbCustomers = getCustomers(team,year)
+            let nbCustomers = getCustomers(team, year)
             dic[year][team] = nbCustomers
-            
+
         }
-        
+
     }
     //console.log(dic);
     return dic
 }
 
-function getAllCustomersDpt(){
+function getAllCustomersDpt() {
     let dic = {}
 
     for (let i = 0; i < years.length; i++) {
@@ -533,22 +545,22 @@ function getAllCustomersDpt(){
         dic[year] = {}
         for (let k = 0; k < dpts.length; k++) {
             let dpt = dpts[k]
-            let nbCustomers = getCustomersDpt(dpt,year)
+            let nbCustomers = getCustomersDpt(dpt, year)
             dic[year][dpt] = nbCustomers
-            
+
         }
-        
+
     }
     //console.log(dic);
     return dic
 }
 
-function getCustomersProduct(team,year,product){
+function getCustomersProduct(team, year, product) {
     let listeClient = []
 
     for (let i = 0; i < data.length; i++) {
         count++
-        if (data[i]['Equipe'] === team && data[i]['Date'].substring(0,4) === year && data[i]['Produit'] === product && !listeClient.includes(data[i]['Client'])) {
+        if (data[i]['Equipe'] === team && data[i]['Date'].substring(0, 4) === year && data[i]['Produit'] === product && !listeClient.includes(data[i]['Client'])) {
             listeClient.push(data[i]['Client'])
         }
     }
@@ -556,7 +568,7 @@ function getCustomersProduct(team,year,product){
     return listeClient.length
 }
 
-function getAllCustomersProduct(){
+function getAllCustomersProduct() {
     let dic = {}
 
     for (let i = 0; i < years.length; i++) {
@@ -567,22 +579,22 @@ function getAllCustomersProduct(){
             let team = teams[k]
             dic[year][team] = {}
             for (let j = 0; j < products.length; j++) {
-                
+
                 let product = products[j]
-                let nbCustomers = getCustomersProduct(team,year,product)
+                let nbCustomers = getCustomersProduct(team, year, product)
                 dic[year][team][product] = nbCustomers
             }
-            
-            
+
+
         }
-        
+
     }
     return dic;
 }
 
-function nationalStat(){
+function nationalStat() {
     let stat = {}
-    stat['global'] = {} 
+    stat['global'] = {}
     stat['detail'] = {}
 
     for (let i = 0; i < years.length; i++) {
@@ -591,15 +603,15 @@ function nationalStat(){
         let sommeGlobal = 0
 
         for (let j = 0; j < teams.length; j++) {
-                sommeGlobal += allCustomers[years[i]][teams[j]]
+            sommeGlobal += allCustomers[years[i]][teams[j]]
 
-                for (let k = 0; k < topAll[0].length; k++) {
+            for (let k = 0; k < topAll[0].length; k++) {
 
-                    if (!stat['detail'][years[i]][topAll[i][k]]) {
-                        stat['detail'][years[i]][topAll[i][k]] = 0
-                    }
-                stat['detail'][years[i]][topAll[i][k]] += allCustomersProduct[years[i]][teams[j]][topAll[i][k]]
+                if (!stat['detail'][years[i]][topAll[i][k]]) {
+                    stat['detail'][years[i]][topAll[i][k]] = 0
                 }
+                stat['detail'][years[i]][topAll[i][k]] += allCustomersProduct[years[i]][teams[j]][topAll[i][k]]
+            }
         }
         stat['global'][years[i]] = sommeGlobal
     }
@@ -685,7 +697,7 @@ function createDataTop25() {
     // Ajouter le nom de l'équipe
     firstRowbis.push("Clients Perdus/Gagnés ");
     for (let t = 0; t < years.length; t++) {
-        firstRowbis.push('Equipe', 'Clients perdus', 'Clients perdus%', 'Clients gagnés','Clients gagnés%', '')
+        firstRowbis.push('Equipe', 'Clients perdus', 'Clients perdus%', 'Clients gagnés', 'Clients gagnés%', '')
     }
     excelRows.push(firstRowbis)
 
@@ -722,7 +734,7 @@ function createDataTop25() {
     // Ajouter le nom de l'équipe
     ligneUne.push("Clients Perdus/Gagnés détails ");
     for (let t = 0; t < years.length; t++) {
-        ligneUne.push('', 'Clients perdus', '', 'Clients gagnés','', '')
+        ligneUne.push('', 'Clients perdus', '', 'Clients gagnés', '', '')
     }
     excelRows.push(ligneUne)
     let dicNew = getAllNewCustomers()
@@ -731,47 +743,47 @@ function createDataTop25() {
     let max = 0
     for (let p = 1; p < years.length; p++) {
         if (dicNew[years[p]].length > max) {
-            max = dicNew[years[p]].length 
+            max = dicNew[years[p]].length
         }
         if (dicLost[years[p]].length > max) {
-            max = dicLost[years[p]].length 
+            max = dicLost[years[p]].length
         }
     }
     //console.log(max);
-        for (let i = 0; i < max ; i++) {
-            let row = []
-            row.push('')
-            for (let k = 0; k < years.length; k++) {
-                let cellNew = ''
-                let cellLost = ''
-                if (i < dicNew[years[k]].length) {
-                    cellNew = dicNew[years[k]][i]
-                }if (i < dicLost[years[k]].length) {
-                    cellLost = dicLost[years[k]][i]
-                }
-                //console.log(cellNew);
-                //console.log(cellLost);
-                row.push('',cellLost,'',cellNew,'','')
+    for (let i = 0; i < max; i++) {
+        let row = []
+        row.push('')
+        for (let k = 0; k < years.length; k++) {
+            let cellNew = ''
+            let cellLost = ''
+            if (i < dicNew[years[k]].length) {
+                cellNew = dicNew[years[k]][i]
+            } if (i < dicLost[years[k]].length) {
+                cellLost = dicLost[years[k]][i]
             }
-            excelRows.push(row)
+            //console.log(cellNew);
+            //console.log(cellLost);
+            row.push('', cellLost, '', cellNew, '', '')
+        }
+        excelRows.push(row)
     }
 
-    
-    
+
+
     //console.log(excelRows);
     return excelRows;
 }
 
 
 function createDataDN() {
-    let dataBySheet =  []
-    
+    let dataBySheet = []
+
     ////////////////////////////////////////////////
     // Tous les produits / année / équipe avec des stats de client 
     ////////////////////////////////////////////////
     // Pour chaque équipe 
     for (let i = 0; i < teams.length; i++) {
-    
+
         let excelRows = []
         // Ajouter une ligne vide pour séparer les blocs
         //excelRows.push([]);
@@ -797,7 +809,7 @@ function createDataDN() {
                 }
                 row.push(datte, topAll[k][j], ratio, ratioPourcentage + '%', '');
                 if (years[k] && teams[i] && topAll[k][j] && ratioPourcentage) {
-                dataForColor[years[k]][teams[i]][topAll[k][j]]  =  ratioPourcentage
+                    dataForColor[years[k]][teams[i]][topAll[k][j]] = ratioPourcentage
                 }
             }
             excelRows.push(row);
@@ -805,7 +817,7 @@ function createDataDN() {
 
         dataBySheet.push(excelRows)
     }
-    
+
     ////////////////////////////////////////////////
     // Tous les produits / année / stats national de client 
     ////////////////////////////////////////////////
@@ -837,16 +849,16 @@ function createDataDN() {
             }
             row.push(datte, topAll[k][j], ratio, ratioPourcentage + '%', topAllPrice[years[k]][topAll[k][j]] + '€');
             if (years[k] && topAll[k][j] && ratioPourcentage) {
-                dataForColor[years[k]]["NATIONAL"][topAll[k][j]] =  ratioPourcentage                
+                dataForColor[years[k]]["NATIONAL"][topAll[k][j]] = ratioPourcentage
             }
-            
+
         }
         excelRowsNational.push(row);
 
     }
 
     dataBySheet.push(excelRowsNational)
-    
+
     ////////////////////////////////////////////////
     // Stats sur les nouveaux clients et les clients perdus pour chaque équipe par année
     ////////////////////////////////////////////////
@@ -856,7 +868,7 @@ function createDataDN() {
     // Ajouter le nom de l'équipe
     firstRowbis.push("Clients Perdus/Gagnés ");
     for (let t = 0; t < years.length; t++) {
-        firstRowbis.push('Equipe', 'Clients perdus', 'Clients perdus%', 'Clients gagnés','Clients gagnés%', '')
+        firstRowbis.push('Equipe', 'Clients perdus', 'Clients perdus%', 'Clients gagnés', 'Clients gagnés%', '')
     }
     excelRowsNewLost.push(firstRowbis)
 
@@ -893,7 +905,7 @@ function createDataDN() {
     // Ajouter le nom de l'équipe
     ligneUne.push("Clients Perdus/Gagnés détails ");
     for (let t = 0; t < years.length; t++) {
-        ligneUne.push('', 'Clients perdus', '', 'Clients gagnés','', '')
+        ligneUne.push('', 'Clients perdus', '', 'Clients gagnés', '', '')
     }
     excelRowsNewLost.push(ligneUne)
     let dicNew = getAllNewCustomers()
@@ -902,29 +914,29 @@ function createDataDN() {
     let max = 0
     for (let p = 1; p < years.length; p++) {
         if (dicNew[years[p]].length > max) {
-            max = dicNew[years[p]].length 
+            max = dicNew[years[p]].length
         }
         if (dicLost[years[p]].length > max) {
-            max = dicLost[years[p]].length 
+            max = dicLost[years[p]].length
         }
     }
     //console.log(max);
-        for (let i = 0; i < max ; i++) {
-            let row = []
-            row.push('')
-            for (let k = 0; k < years.length; k++) {
-                let cellNew = ''
-                let cellLost = ''
-                if (i < dicNew[years[k]].length) {
-                    cellNew = dicNew[years[k]][i]
-                }if (i < dicLost[years[k]].length) {
-                    cellLost = dicLost[years[k]][i]
-                }
-                //console.log(cellNew);
-                //console.log(cellLost);
-                row.push('',cellLost,'',cellNew,'','')
+    for (let i = 0; i < max; i++) {
+        let row = []
+        row.push('')
+        for (let k = 0; k < years.length; k++) {
+            let cellNew = ''
+            let cellLost = ''
+            if (i < dicNew[years[k]].length) {
+                cellNew = dicNew[years[k]][i]
+            } if (i < dicLost[years[k]].length) {
+                cellLost = dicLost[years[k]][i]
             }
-            excelRowsNewLost.push(row)
+            //console.log(cellNew);
+            //console.log(cellLost);
+            row.push('', cellLost, '', cellNew, '', '')
+        }
+        excelRowsNewLost.push(row)
     }
     dataBySheet.push(excelRowsNewLost)
 
@@ -957,23 +969,23 @@ function createDataDN() {
         for (let i = 0; i < years.length; i++) {
             let year = years[i]
             const sortedkey = Object.keys(allCustomersDpt[year]).sort()
-                const key = sortedkey[k]
-                let ratioDpt = ''
-                if (potentiel[key] && potentiel[key] != 0) {
-                    ratioDpt = (allCustomersDpt[year][key] / potentiel[key] * 100).toFixed(1) + '%'
-                }
-                // CA départements 
-                let caD = 0 
-                if (CADpts[year][key]) {
-                    caD = CADpts[year][key]
-                }
-                rowDpt.push(key, allCustomersDpt[year][key], potentiel[key], ratioDpt,caD+"€", "")
+            const key = sortedkey[k]
+            let ratioDpt = ''
+            if (potentiel[key] && potentiel[key] != 0) {
+                ratioDpt = (allCustomersDpt[year][key] / potentiel[key] * 100).toFixed(1) + '%'
             }
+            // CA départements 
+            let caD = 0
+            if (CADpts[year][key]) {
+                caD = CADpts[year][key]
+            }
+            rowDpt.push(key, allCustomersDpt[year][key], potentiel[key], ratioDpt, caD + "€", "")
+        }
         excelRowsDpt.push(rowDpt)
     }
 
 
-    
+
     dataBySheet.push(excelRowsDpt)
 
 
@@ -981,7 +993,7 @@ function createDataDN() {
     // Département client et potentiel regroupé par équipe (secteur)
     /////////////////////////////////////////
     let excelRowsDptequipe = []
-    
+
 
     // premiere ligne dpt 
     ligneUneDpt = []
@@ -999,46 +1011,57 @@ function createDataDN() {
         for (let t = 0; t < equipeParDepartement[keyDpt[k]].length; t++) {
             // somme 
             if (t == 0) {
-                
-            
-            for (let h = 0; h < years.length; h++) {
-                sumEquipe["Equipe"] = keyDpt[k]
-                sumEquipe[years[h]] = {}
-                sumEquipe[years[h]]['NbActif'] = 0
-                sumEquipe[years[h]]['NbPotentiel'] = 0
-                sumEquipe[years[h]]['CA'] = 0
+
+
+                for (let h = 0; h < years.length; h++) {
+                    sumEquipe["Equipe"] = keyDpt[k]
+                    sumEquipe[years[h]] = {}
+                    sumEquipe[years[h]]['NbActif'] = 0
+                    sumEquipe[years[h]]['NbPotentiel'] = 0
+                    sumEquipe[years[h]]['CA'] = 0
+                }
             }
-        }
 
             let rowDpt = []
             rowDpt.push('')
             for (let i = 0; i < years.length; i++) {
-                
+
                 let year = years[i]
                 const key = equipeParDepartement[keyDpt[k]][t]
+
                 
-                let ratioDpt = ''
-                if (potentiel[key] && potentiel[key] != 0) {
-                    ratioDpt = (allCustomersDpt[year][key] / potentiel[key] * 100).toFixed(1)
-                }
                 // CA départements 
                 let caD = 0
                 if (CADpts[year][key]) {
                     caD = CADpts[year][key]
                 }
-                let nbActif = allCustomersDpt[year][key]
-                let NbPotentiel = potentiel[key]
+                // Vérif si valeurs undefined etc
+                let nbActif = 0
+                if (allCustomersDpt[year][key]) {
+                    nbActif = allCustomersDpt[year][key]
+                }
+                let NbPotentiel = 0
+                if (potentiel[key]) {
+                    NbPotentiel = potentiel[key]
+                }
+                let ratioDpt = 0
+                if (allCustomersDpt[year][key] && potentiel[key] && potentiel[key] != 0) {
+                    ratioDpt = (allCustomersDpt[year][key] / potentiel[key] * 100).toFixed(1)
+                }
                 sumEquipe[years[i]]['NbActif'] += nbActif
                 sumEquipe[years[i]]['NbPotentiel'] += potentiel[key]
-                
+
                 sumEquipe[years[i]]['CA'] += caD
                 rowDpt.push(keyDpt[k], key, nbActif, NbPotentiel, ratioDpt + "%", caD + "€", "")
             }
             excelRowsDptequipe.push(rowDpt)
         }
         for (let g = 0; g < years.length; g++) {
-            let pourcent = (sumEquipe[years[g]]['NbActif']/sumEquipe[years[g]]['NbPotentiel']*100).toFixed(1)
-            rowSum.push("", sumEquipe["Equipe"], "", sumEquipe[years[g]]['NbActif'], sumEquipe[years[g]]['NbPotentiel'],  pourcent+"%", sumEquipe[years[g]]['CA'] + "€")
+            let pourcent = 0
+            if (sumEquipe[years[g]]['NbActif'] && sumEquipe[years[g]]['NbPotentiel'] && sumEquipe[years[g]]['NbPotentiel'] !== 0) {
+                pourcent = (sumEquipe[years[g]]['NbActif'] / sumEquipe[years[g]]['NbPotentiel'] * 100).toFixed(1)
+            }
+            rowSum.push("", sumEquipe["Equipe"], "", sumEquipe[years[g]]['NbActif'], sumEquipe[years[g]]['NbPotentiel'], pourcent + "%", sumEquipe[years[g]]['CA'] + "€")
         }
         excelRowsDptequipe.push(rowSum)
         excelRowsDptequipe.push([""])
@@ -1052,13 +1075,13 @@ function createDataDN() {
 
 
 
-    
+
     //console.log(dataBySheet);
     return dataBySheet;
 }
 
 // Génère un fichier excel avec le tableau qu'on lui donne
-function generateOutput(data){
+function generateOutput(data) {
     // Créer un nouveau classeur
     const newWorkbook = xlsx.utils.book_new()
     console.log("generate Excel 1/5");
@@ -1067,22 +1090,22 @@ function generateOutput(data){
     console.log("generate Excel 2/5");
 
     // Ajouter la nouvelle feuille au classeur 
-    xlsx.utils.book_append_sheet(newWorkbook,newWorksheet, 'Feuille 1');
+    xlsx.utils.book_append_sheet(newWorkbook, newWorksheet, 'Feuille 1');
     console.log("generate Excel 3/5");
 
     // Chemin du fichier de sortie
     const rd = Math.floor(Math.random() * 10000);
-    const outputFilePath = "./excelGenerated/top25_"+ rd +".xlsx"
-    console.log("generate Excel 4/5    "+outputFilePath);
+    const outputFilePath = "./excelGenerated/top25_" + rd + ".xlsx"
+    console.log("generate Excel 4/5    " + outputFilePath);
 
     // Enregistrer le classeur dans un fichier Excel 
-    xlsx.writeFile(newWorkbook,outputFilePath)
+    xlsx.writeFile(newWorkbook, outputFilePath)
     console.log("generate Excel 5/5");
 
     return outputFilePath
 }
 
-function generateOutput2(data){
+function generateOutput2(data) {
     // Créer un nouveau classeur
     const newWorkbook = xlsx.utils.book_new()
     console.log("generate Excel...");
@@ -1090,50 +1113,58 @@ function generateOutput2(data){
     let long = teams.length
 
     // pour toutes les équipes topAll
-    for(let i = 0;i < long;i++){
-    // Créer une nouvelle feuille
-    const newWorksheet = xlsx.utils.aoa_to_sheet(data[i])
-    // Ajouter la nouvelle feuille au classeur 
-    xlsx.utils.book_append_sheet(newWorkbook,newWorksheet, teams[i].slice(0,30));
+    for (let i = 0; i < long; i++) {
+        // Créer une nouvelle feuille
+        const newWorksheet = xlsx.utils.aoa_to_sheet(data[i])
+        // Ajouter la nouvelle feuille au classeur 
+        xlsx.utils.book_append_sheet(newWorkbook, newWorksheet, teams[i].slice(0, 30));
     }
 
     // National Stats
     // Créer une nouvelle feuille
     const worksheetNatio = xlsx.utils.aoa_to_sheet(data[long])
-    
+
     // Ajouter la nouvelle feuille au classeur 
-    xlsx.utils.book_append_sheet(newWorkbook,worksheetNatio, 'NATIONAL');
+    xlsx.utils.book_append_sheet(newWorkbook, worksheetNatio, 'NATIONAL');
 
     // NewLost Stats
     // Créer une nouvelle feuille
-    const worksheetNewLost = xlsx.utils.aoa_to_sheet(data[long+1])
-    
+    const worksheetNewLost = xlsx.utils.aoa_to_sheet(data[long + 1])
+
     // Ajouter la nouvelle feuille au classeur 
-    xlsx.utils.book_append_sheet(newWorkbook,worksheetNewLost, 'NewLost');
+    xlsx.utils.book_append_sheet(newWorkbook, worksheetNewLost, 'NewLost');
 
     // Département Stats
     // Créer une nouvelle feuille
-    const worksheetDtp= xlsx.utils.aoa_to_sheet(data[long+2])
-    
+    const worksheetDtp = xlsx.utils.aoa_to_sheet(data[long + 2])
+
     // Ajouter la nouvelle feuille au classeur 
-    xlsx.utils.book_append_sheet(newWorkbook,worksheetDtp, 'Dpt');
+    xlsx.utils.book_append_sheet(newWorkbook, worksheetDtp, 'Dpt');
 
     // Département par équipe Stats
     // Créer une nouvelle feuille
-    const worksheetDtpEqu= xlsx.utils.aoa_to_sheet(data[long+3])
-    
+    const worksheetDtpEqu = xlsx.utils.aoa_to_sheet(data[long + 3])
+
     // Ajouter la nouvelle feuille au classeur 
-    xlsx.utils.book_append_sheet(newWorkbook,worksheetDtpEqu, 'Dpt secteur');
+    xlsx.utils.book_append_sheet(newWorkbook, worksheetDtpEqu, 'Dpt secteur');
 
 
 
     // Chemin du fichier de sortie
-    const rd = Math.floor(Math.random() * 10000);
-    const outputFilePath = "./excelGenerated/catalogueStats_"+ rd +".xlsx"
+    //const rd = Math.floor(Math.random() * 10000);
+    const now = new Date();
+    const year = now.getFullYear().toString().substr(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+
+    const rd = `${year}_${month}_${day}_${hours}_${minutes}`;
+    const outputFilePath = "./excelGenerated/catalogueStats_" + rd + ".xlsx"
     console.log(outputFilePath);
 
     // Enregistrer le classeur dans un fichier Excel 
-    xlsx.writeFile(newWorkbook,outputFilePath)
+    xlsx.writeFile(newWorkbook, outputFilePath)
 
     return outputFilePath
 }
@@ -1154,25 +1185,25 @@ async function colorEquipeVsNational(filePath) {
             for (let p = 0; p < topAll[0].length; p++) {
                 let coordCell = alpha[y] + "" + (p + 2)
                 const cell = worksheet.cell(coordCell)
-                let cellValue = cell.value().toString().replace("%","")
+                let cellValue = cell.value().toString().replace("%", "")
                 cellValue = parseFloat(cellValue)
                 let natioValue = parseFloat(dataForColor[years[y]]["NATIONAL"][topAll[y][p]])
 
-                if (cellValue < natioValue){
+                if (cellValue < natioValue) {
                     // rouge
                     cell.style({ fill: { type: 'solid', color: 'FC7E7E' } });
                 }
-                else if(cellValue == natioValue){
+                else if (cellValue == natioValue) {
                     // Orange
                     cell.style({ fill: { type: 'solid', color: 'FFB185' } });
                 }
-                else{
+                else {
                     // Vert
                     cell.style({ fill: { type: 'solid', color: '7EFC80' } });
                 }
             }
         }
-        
+
     }
     await workbook.toFileAsync(filePath);
 }
@@ -1189,7 +1220,7 @@ for (let i = 0; i < dataProut.length; i++) {
     if (typeof dataProut[i] != 'undefined') {
         data.push(dataProut[i])
     }
-    
+
 }
 //console.log("Processing...");
 
@@ -1219,9 +1250,9 @@ const potentiel = getPotentielDpts()
 const allCustomersDpt = getAllCustomersDpt()
 //const CADpts = getCADpts() // je pense pas nécessaire parce que je me suis trompé de fichier mais dans le doute...
 const CADpts = getPricePerDtp()
-console.log(CADpts);
+//console.log(CADpts);
 const equipeParDepartement = getEquipeDpt()
-
+//console.log(equipeParDepartement);
 
 // COMPARAISON POUR COLORER
 const dataForColor = {}
@@ -1245,15 +1276,15 @@ for (let k = 0; k < sku.length; k++) {
     for (let q = 0; q < sku[k].length; q++) {
         for (let r = 0; r < sku[k][q].length; r++) {
             //console.log(sku[k][q][r]);
-                if (typeof sku[k][q][r] === 'undefined') {
-                    sku[k][q][r] = ''
-                }
-                if (typeof sku[k][q] === 'undefined') {
-                    sku[k][q] = ''
-                }
-                if (typeof sku[k] === 'undefined') {
-                    sku[k] = ''
-                }
+            if (typeof sku[k][q][r] === 'undefined') {
+                sku[k][q][r] = ''
+            }
+            if (typeof sku[k][q] === 'undefined') {
+                sku[k][q] = ''
+            }
+            if (typeof sku[k] === 'undefined') {
+                sku[k] = ''
+            }
         }
     }
 }
