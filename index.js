@@ -17,7 +17,7 @@ console.log("Begin...");
 function getData() {
 
     // Chemin vers votre fichier Excel
-    const filePath = 'export.xlsx';
+    const filePath = 'global.xlsx';
 
     // Charger le fichier Excel
     const workbook = xlsx.readFile(filePath);
@@ -680,7 +680,7 @@ function createDataTop25() {
             if (j === 0) {
                 datte = years[k]
             }
-            row.push(datte, top25[k][j], ratio, ratioPourcentage.toFixed(0) + '%', top25Price[years[k]][top25[k][j]] + '€');
+            row.push(datte, top25[k][j], ratio, ratioPourcentage.toFixed(0) + '%', top25Price[years[k]][top25[k][j]]);
         }
         excelRows.push(row);
 
@@ -836,6 +836,7 @@ function createDataDN() {
 
     let stats = nationalStat()
     //console.log(topAll);
+    let totalAnnee = []
     for (let j = 0; j < topAll[0].length; j++) {
 
         let row = [];
@@ -847,16 +848,27 @@ function createDataDN() {
             if (j === 0) {
                 datte = years[k]
             }
-            row.push(datte, topAll[k][j], ratio, ratioPourcentage + '%', topAllPrice[years[k]][topAll[k][j]] + '€');
+            row.push(datte, topAll[k][j], ratio, ratioPourcentage + '%', topAllPrice[years[k]][topAll[k][j]]);
             if (years[k] && topAll[k][j] && ratioPourcentage) {
                 dataForColor[years[k]]["NATIONAL"][topAll[k][j]] = ratioPourcentage
             }
+
+        // Sommes Année
+        if (typeof totalAnnee[k] === "undefined") {
+            totalAnnee[k] = 0; // Initialisation à 0 si l'élément n'existe pas
+        }
+        totalAnnee[k] += topAllPrice[years[k]][topAll[k][j]]
 
         }
         excelRowsNational.push(row);
 
     }
-
+    let rowTotal = []
+    for (let o = 0; o < years.length; o++) {
+        rowTotal.push('','','','',totalAnnee[o])
+        
+    }
+    excelRowsNational.push(rowTotal);
     dataBySheet.push(excelRowsNational)
 
     ////////////////////////////////////////////////
@@ -979,7 +991,7 @@ function createDataDN() {
             if (CADpts[year][key]) {
                 caD = CADpts[year][key]
             }
-            rowDpt.push(key, allCustomersDpt[year][key], potentiel[key], ratioDpt, caD + "€", "")
+            rowDpt.push(key, allCustomersDpt[year][key], potentiel[key], ratioDpt, caD , "")
         }
         excelRowsDpt.push(rowDpt)
     }
@@ -1052,7 +1064,7 @@ function createDataDN() {
                 sumEquipe[years[i]]['NbPotentiel'] += potentiel[key]
 
                 sumEquipe[years[i]]['CA'] += caD
-                rowDpt.push(keyDpt[k], key, nbActif, NbPotentiel, ratioDpt + "%", caD + "€", "")
+                rowDpt.push(keyDpt[k], key, nbActif, NbPotentiel, ratioDpt + "%", caD, "")
             }
             excelRowsDptequipe.push(rowDpt)
         }
@@ -1061,7 +1073,7 @@ function createDataDN() {
             if (sumEquipe[years[g]]['NbActif'] && sumEquipe[years[g]]['NbPotentiel'] && sumEquipe[years[g]]['NbPotentiel'] !== 0) {
                 pourcent = (sumEquipe[years[g]]['NbActif'] / sumEquipe[years[g]]['NbPotentiel'] * 100).toFixed(1)
             }
-            rowSum.push("", sumEquipe["Equipe"], "", sumEquipe[years[g]]['NbActif'], sumEquipe[years[g]]['NbPotentiel'], pourcent + "%", sumEquipe[years[g]]['CA'] + "€")
+            rowSum.push("", sumEquipe["Equipe"], "", sumEquipe[years[g]]['NbActif'], sumEquipe[years[g]]['NbPotentiel'], pourcent + "%", sumEquipe[years[g]]['CA'])
         }
         excelRowsDptequipe.push(rowSum)
         excelRowsDptequipe.push([""])
