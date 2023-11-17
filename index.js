@@ -6,10 +6,6 @@ const startTime = new Date()
 console.log("Begin...");
 
 
-
-
-
-
 /**
  * FONCTIONS
  */
@@ -17,7 +13,7 @@ console.log("Begin...");
 function getData() {
 
     // Chemin vers votre fichier Excel
-    const filePath = 'global.xlsx';
+    const filePath = 'fc wout mq.xlsx';
 
     // Charger le fichier Excel
     const workbook = xlsx.readFile(filePath);
@@ -27,7 +23,7 @@ function getData() {
     console.log("Sheet to JSON");
     const dataBrut = xlsx.utils.sheet_to_json(worksheet);
     let data = []
-    const equipeBAN = ['VNC', 'INTER', 'COFFRES', 'FACONNAGE', 'MDD', 'PARTICULIERS', 'PERSONNEL', 'CD03', 'EXPORT']
+    const equipeBAN = ['VNC', 'INTER', 'COFFRES', 'FACONNAGE', 'MDD', 'PARTICULIERS', 'PERSONNEL', 'CD03', 'EXPORT','EXPORT PN']
 
     for (let i = 0; i < dataBrut.length; i++) {
         let date = dataBrut[i]['Lignes de facture/Créé le']
@@ -1023,8 +1019,6 @@ function createDataDN() {
         for (let t = 0; t < equipeParDepartement[keyDpt[k]].length; t++) {
             // somme 
             if (t == 0) {
-
-
                 for (let h = 0; h < years.length; h++) {
                     sumEquipe["Equipe"] = keyDpt[k]
                     sumEquipe[years[h]] = {}
@@ -1033,14 +1027,11 @@ function createDataDN() {
                     sumEquipe[years[h]]['CA'] = 0
                 }
             }
-
             let rowDpt = []
             rowDpt.push('')
             for (let i = 0; i < years.length; i++) {
-
                 let year = years[i]
                 const key = equipeParDepartement[keyDpt[k]][t]
-
                 
                 // CA départements 
                 let caD = 0
@@ -1215,7 +1206,6 @@ async function colorEquipeVsNational(filePath) {
                 }
             }
         }
-
     }
     await workbook.toFileAsync(filePath);
 }
@@ -1305,3 +1295,11 @@ colorEquipeVsNational(generateOutput2(sku))
 
 // fin du temps 
 getTimeProcess(startTime, new Date())
+
+/*
+
+{\__/}
+( ●.●)
+/> *Iris Alpaca Meretur Gloriam Aeternam* 
+
+*/
